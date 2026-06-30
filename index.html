@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CardSum Lens</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">QR card calculator</p>
+        <h1>CardSum Lens</h1>
+      </div>
+      <div class="status-pill" id="cameraStatus">カメラ未起動</div>
+    </header>
+
+    <main class="app-shell">
+      <section class="scanner-panel" aria-labelledby="scannerTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="scannerTitle">カード読み取り</h2>
+            <p>QR形式: <code>card001,100</code></p>
+          </div>
+          <button class="primary-button" id="toggleCameraButton" type="button">カメラ開始</button>
+        </div>
+
+        <div class="video-frame">
+          <video id="cameraVideo" playsinline muted></video>
+          <canvas id="scanCanvas" hidden></canvas>
+          <div class="scan-reticle" aria-hidden="true"></div>
+          <p class="video-placeholder" id="videoPlaceholder">HTTPS環境またはlocalhostでカメラを開始してください</p>
+        </div>
+
+        <form class="manual-entry" id="manualForm">
+          <label for="manualInput">手入力テスト</label>
+          <div class="entry-row">
+            <input id="manualInput" name="manualInput" type="text" inputmode="text" placeholder="card001,100" autocomplete="off">
+            <button type="submit">追加</button>
+          </div>
+        </form>
+
+        <div class="message-area" id="messageArea" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="summary-panel" aria-labelledby="summaryTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="summaryTitle">計算結果</h2>
+            <p>同じカードIDは重複登録しません</p>
+          </div>
+          <button class="ghost-button" id="resetButton" type="button">リセット</button>
+        </div>
+
+        <div class="totals-grid">
+          <div class="metric">
+            <span>合計</span>
+            <strong id="totalValue">0</strong>
+          </div>
+          <div class="metric">
+            <span>枚数</span>
+            <strong id="cardCount">0</strong>
+          </div>
+          <div class="metric">
+            <span>平均</span>
+            <strong id="averageValue">0</strong>
+          </div>
+        </div>
+
+        <div class="table-tools">
+          <button class="secondary-button" id="exportButton" type="button">CSV保存</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>カードID</th>
+                <th>数値</th>
+                <th>時刻</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cardsTableBody">
+              <tr class="empty-row">
+                <td colspan="4">まだカードがありません</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
