@@ -11,10 +11,10 @@
   <body>
     <header class="app-header">
       <div>
-        <p class="eyebrow">QR card calculator</p>
+        <p class="eyebrow">QR nutrition scanner</p>
         <h1>CardSum Lens</h1>
       </div>
-      <div class="status-pill" id="cameraStatus">カメラ未起動</div>
+      <div class="status-pill" id="cameraStatus">カメラ停止中</div>
     </header>
 
     <main class="app-shell">
@@ -22,25 +22,44 @@
         <div class="panel-heading">
           <div>
             <h2 id="scannerTitle">カード読み取り</h2>
-            <p>QR形式: <code>card001,100</code></p>
+            <p>QR形式: <code>card001,rice,150,234,55.7,3.8</code></p>
           </div>
-          <button class="primary-button" id="toggleCameraButton" type="button">カメラ開始</button>
+          <button class="primary-button" id="toggleCameraButton" type="button">カメラ起動</button>
         </div>
 
         <div class="video-frame">
           <video id="cameraVideo" playsinline muted></video>
           <canvas id="scanCanvas" hidden></canvas>
           <div class="scan-reticle" aria-hidden="true"></div>
-          <p class="video-placeholder" id="videoPlaceholder">HTTPS環境またはlocalhostでカメラを開始してください</p>
+          <p class="video-placeholder" id="videoPlaceholder">
+            カメラ利用時は HTTPS または localhost で開いてください。
+          </p>
         </div>
 
         <form class="manual-entry" id="manualForm">
-          <label for="manualInput">手入力テスト</label>
+          <label for="manualInput">手入力</label>
           <div class="entry-row">
-            <input id="manualInput" name="manualInput" type="text" inputmode="text" placeholder="card001,100" autocomplete="off">
+            <input
+              id="manualInput"
+              name="manualInput"
+              type="text"
+              inputmode="text"
+              placeholder="card001,rice,150,234,55.7,3.8"
+              autocomplete="off"
+            >
             <button type="submit">追加</button>
           </div>
+          <p class="helper-text">1行に1カード分を入力してください。</p>
         </form>
+
+        <div class="import-block">
+          <div>
+            <p class="import-title">CSV取込</p>
+            <p class="helper-text">ヘッダーあり・なしのどちらでも取り込めます。</p>
+          </div>
+          <button class="secondary-button" id="importButton" type="button">CSVを選択</button>
+          <input id="importInput" type="file" accept=".csv,text/csv" hidden>
+        </div>
 
         <div class="message-area" id="messageArea" role="status" aria-live="polite"></div>
       </section>
@@ -48,29 +67,33 @@
       <section class="summary-panel" aria-labelledby="summaryTitle">
         <div class="panel-heading">
           <div>
-            <h2 id="summaryTitle">計算結果</h2>
-            <p>同じカードIDは重複登録しません</p>
+            <h2 id="summaryTitle">栄養サマリー</h2>
+            <p id="summaryHeading">カードはまだありません</p>
           </div>
           <button class="ghost-button" id="resetButton" type="button">リセット</button>
         </div>
 
         <div class="totals-grid">
           <div class="metric">
-            <span>合計</span>
-            <strong id="totalValue">0</strong>
-          </div>
-          <div class="metric">
             <span>枚数</span>
             <strong id="cardCount">0</strong>
           </div>
           <div class="metric">
-            <span>平均</span>
-            <strong id="averageValue">0</strong>
+            <span>カロリー (kcal)</span>
+            <strong id="caloriesValue">0</strong>
+          </div>
+          <div class="metric">
+            <span>炭水化物 (g)</span>
+            <strong id="carbsValue">0</strong>
+          </div>
+          <div class="metric">
+            <span>タンパク質 (g)</span>
+            <strong id="proteinValue">0</strong>
           </div>
         </div>
 
         <div class="table-tools">
-          <button class="secondary-button" id="exportButton" type="button">CSV保存</button>
+          <button class="secondary-button" id="exportButton" type="button">CSV書き出し</button>
         </div>
 
         <div class="table-wrap">
@@ -78,14 +101,18 @@
             <thead>
               <tr>
                 <th>カードID</th>
-                <th>数値</th>
-                <th>時刻</th>
+                <th>名称</th>
+                <th>グラム数</th>
+                <th>カロリー</th>
+                <th>炭水化物</th>
+                <th>タンパク質</th>
+                <th>読取時刻</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="cardsTableBody">
               <tr class="empty-row">
-                <td colspan="4">まだカードがありません</td>
+                <td colspan="8">まだカードが追加されていません。</td>
               </tr>
             </tbody>
           </table>

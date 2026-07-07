@@ -209,6 +209,29 @@ input {
   color: #ffffff;
 }
 
+.helper-text {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.import-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 18px 18px;
+  padding: 16px 18px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.import-title {
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
 .message-area {
   min-height: 44px;
   margin: 0 18px 18px;
@@ -226,7 +249,7 @@ input {
 
 .totals-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 18px;
 }
@@ -286,8 +309,14 @@ th {
   font-size: 0.84rem;
 }
 
-td:nth-child(2),
-th:nth-child(2) {
+td:nth-child(3),
+td:nth-child(4),
+td:nth-child(5),
+td:nth-child(6),
+th:nth-child(3),
+th:nth-child(4),
+th:nth-child(5),
+th:nth-child(6) {
   text-align: right;
 }
 
@@ -323,6 +352,11 @@ th:nth-child(2) {
   .panel-heading,
   .entry-row {
     grid-template-columns: 1fr;
+  }
+
+  .import-block {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .panel-heading {
