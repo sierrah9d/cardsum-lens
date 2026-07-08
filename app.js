@@ -4,10 +4,13 @@ const state = {
   stream: null,
   scanTimer: null,
   lastReadAtById: new Map(),
+  audioContext: null,
+  lastInvalidQrAt: 0,
 };
 
 const SCAN_INTERVAL_MS = 150;
 const SAME_ID_COOLDOWN_MS = 1000;
+const INVALID_QR_SOUND_COOLDOWN_MS = 1000;
 const CSV_HEADER_COLUMNS = [
   "card_id",
   "name",
@@ -236,7 +239,77 @@ function showMessage(message, type = "") {
   messageArea.className = `message-area ${type}`.trim();
 }
 
+function ensureAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContextClass) {
+    return null;
+  }
+
+  if (!state.audioContext) {
+    state.audioContext = new AudioContextClass();
+  }
+
+  if (state.audioContext.state === "suspended") {
+    state.audioContext.resume().catch(() => {});
+  }
+
+  return state.audioContext;
+}
+
+function playTone({ frequency, duration, type = "sine", volume = 0.05 }) {
+  const audioContext = ensureAudioContext();
+
+  if (!audioContext) {
+    return;
+  }
+
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  const now = audioContext.currentTime;
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, now);
+
+  gainNode.gain.setValueAtTime(0.0001, now);
+  gainNode.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+
+  oscillator.start(now);
+  oscillator.stop(now + duration + 0.02);
+}
+
+function playSuccessSound() {
+  playTone({
+    frequency: 880,
+    duration: 0.12,
+    type: "triangle",
+    volume: 0.04,
+  });
+}
+
+function playInvalidQrSound() {
+  const now = Date.now();
+
+  if (now - state.lastInvalidQrAt < INVALID_QR_SOUND_COOLDOWN_MS) {
+    return;
+  }
+
+  state.lastInvalidQrAt = now;
+  playTone({
+    frequency: 220,
+    duration: 0.18,
+    type: "sawtooth",
+    volume: 0.035,
+  });
+}
+
 async function toggleCamera() {
+  ensureAudioContext();
+
   if (state.stream) {
     stopCamera();
     return;
@@ -331,24 +404,30 @@ function scanFrame() {
   });
 
   if (result?.data) {
-    const added = addCard(result.data, "camera");
-    if (!added) {
-      const parsed = safelyParseCardText(result.data);
-      if (parsed && state.ids.has(parsed.id)) {
-        const lastReadAt = state.lastReadAtById.get(parsed.id) || 0;
-        if (Date.now() - lastReadAt > SAME_ID_COOLDOWN_MS) {
-          showMessage(`${parsed.id} はすでに追加されています。`, "warning");
-        }
+    let parsed;
+
+    try {
+      parsed = parseCardText(result.data);
+    } catch (error) {
+      showMessage(error.message, "warning");
+      playInvalidQrSound();
+      return;
+    }
+
+    const addResult = addParsedCard(parsed, "camera");
+
+    if (addResult.added) {
+      showMessage(`${parsed.name}（${parsed.id}）を追加しました。`, "success");
+      playSuccessSound();
+      return;
+    }
+
+    if (state.ids.has(parsed.id)) {
+      const lastReadAt = state.lastReadAtById.get(parsed.id) || 0;
+      if (Date.now() - lastReadAt > SAME_ID_COOLDOWN_MS) {
+        showMessage(`${parsed.id} はすでに追加されています。`, "warning");
       }
     }
-  }
-}
-
-function safelyParseCardText(rawText) {
-  try {
-    return parseCardText(rawText);
-  } catch {
-    return null;
   }
 }
 
@@ -517,12 +596,14 @@ exportButton.addEventListener("click", exportCsv);
 importButton.addEventListener("click", () => importInput.click());
 
 importInput.addEventListener("change", async (event) => {
+  ensureAudioContext();
   const [file] = event.target.files;
   await importCsv(file);
 });
 
 manualForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  ensureAudioContext();
   if (addCard(manualInput.value, "manual")) {
     manualInput.value = "";
     manualInput.focus();
