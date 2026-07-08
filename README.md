@@ -2,6 +2,9 @@
 
 CardSum Lens は、QRコード付きカードをブラウザのカメラで読み取り、食品カードの栄養情報を集計する完全フロントエンド型 Web アプリです。Windows と Chromebook のブラウザで使うことを想定しています。
 
+公開アプリ:
+[https://sierrah9d.github.io/cardsum-lens/](https://sierrah9d.github.io/cardsum-lens/)
+
 ## 主な機能
 
 - QRコード `card001,rice,150,234,55.7,3.8` 形式の読み取り
