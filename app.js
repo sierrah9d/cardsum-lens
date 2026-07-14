@@ -1,3 +1,31 @@
+const NUTRIENT_FIELDS = [
+  { key: "grams", label: "グラム数", unit: "g", category: "basic", primary: false },
+  { key: "calories", label: "カロリー", unit: "kcal", category: "basic", primary: true },
+  { key: "carbs", label: "炭水化物", unit: "g", category: "basic", primary: true },
+  { key: "protein", label: "タンパク質", unit: "g", category: "basic", primary: true },
+  { key: "fat", label: "脂質", unit: "kcal", category: "basic", primary: true },
+  { key: "fiber", label: "食物繊維", unit: "mg", category: "minerals", primary: false },
+  { key: "potassium", label: "カリウム", unit: "mg", category: "minerals", primary: false },
+  { key: "calcium", label: "カルシウム", unit: "mg", category: "minerals", primary: false },
+  { key: "iron", label: "鉄", unit: "mg", category: "minerals", primary: false },
+  { key: "vitaminA", label: "ビタミンA", unit: "μg", category: "vitamins", primary: false },
+  { key: "vitaminC", label: "ビタミンC", unit: "mg", category: "vitamins", primary: false },
+  { key: "vitaminD", label: "ビタミンD", unit: "μg", category: "vitamins", primary: false },
+  { key: "salt", label: "食塩", unit: "g", category: "vitamins", primary: false },
+];
+
+const SUMMARY_SECTIONS = [
+  { key: "basic", label: "基本栄養" },
+  { key: "minerals", label: "ミネラル・食物繊維" },
+  { key: "vitamins", label: "ビタミン・塩分" },
+];
+
+const CSV_HEADER_COLUMNS = [
+  "card_id",
+  "name",
+  ...NUTRIENT_FIELDS.map((field) => field.key),
+];
+
 const state = {
   cards: [],
   ids: new Set(),
@@ -11,14 +39,6 @@ const state = {
 const SCAN_INTERVAL_MS = 150;
 const SAME_ID_COOLDOWN_MS = 1000;
 const INVALID_QR_SOUND_COOLDOWN_MS = 1000;
-const CSV_HEADER_COLUMNS = [
-  "card_id",
-  "name",
-  "grams",
-  "kcal",
-  "carbs_g",
-  "protein_g",
-];
 
 const cameraStatus = document.querySelector("#cameraStatus");
 const toggleCameraButton = document.querySelector("#toggleCameraButton");
@@ -32,12 +52,79 @@ const importInput = document.querySelector("#importInput");
 const messageArea = document.querySelector("#messageArea");
 const summaryHeading = document.querySelector("#summaryHeading");
 const cardCount = document.querySelector("#cardCount");
-const caloriesValue = document.querySelector("#caloriesValue");
-const carbsValue = document.querySelector("#carbsValue");
-const proteinValue = document.querySelector("#proteinValue");
+const primaryMetrics = document.querySelector("#primaryMetrics");
+const summarySections = document.querySelector("#summarySections");
+const tableHead = document.querySelector("#cardsTableHead");
 const tableBody = document.querySelector("#cardsTableBody");
 const resetButton = document.querySelector("#resetButton");
 const exportButton = document.querySelector("#exportButton");
+
+setupStaticUi();
+
+function setupStaticUi() {
+  primaryMetrics.replaceChildren(
+    ...NUTRIENT_FIELDS.filter((field) => field.primary).map((field) =>
+      createMetricCard(field, true)
+    )
+  );
+
+  summarySections.replaceChildren(
+    ...SUMMARY_SECTIONS.map((section) => {
+      const wrapper = document.createElement("section");
+      wrapper.className = "summary-section";
+
+      const title = document.createElement("h3");
+      title.className = "summary-section-title";
+      title.textContent = section.label;
+
+      const grid = document.createElement("div");
+      grid.className = "summary-section-grid";
+      grid.id = `summary-${section.key}`;
+
+      const fields = NUTRIENT_FIELDS.filter(
+        (field) => field.category === section.key && !field.primary
+      );
+
+      grid.replaceChildren(...fields.map((field) => createMetricCard(field, false)));
+      wrapper.append(title, grid);
+      return wrapper;
+    })
+  );
+
+  const headerRow = document.createElement("tr");
+  const columns = [
+    "カードID",
+    "名称",
+    ...NUTRIENT_FIELDS.map((field) => field.label),
+    "読取時刻",
+    "",
+  ];
+
+  headerRow.replaceChildren(
+    ...columns.map((label) => {
+      const cell = document.createElement("th");
+      cell.textContent = label;
+      return cell;
+    })
+  );
+  tableHead.replaceChildren(headerRow);
+}
+
+function createMetricCard(field, prominent) {
+  const metric = document.createElement("div");
+  metric.className = prominent ? "metric metric-prominent" : "metric";
+  metric.dataset.metricKey = field.key;
+
+  const label = document.createElement("span");
+  label.textContent = `${field.label} (${field.unit})`;
+
+  const value = document.createElement("strong");
+  value.id = `${field.key}Value`;
+  value.textContent = "0";
+
+  metric.append(label, value);
+  return metric;
+}
 
 function parseCardText(rawText) {
   const text = rawText.trim();
@@ -50,19 +137,15 @@ function parseCardText(rawText) {
 }
 
 function parseCardParts(parts, sourceLabel = "データ") {
-  if (parts.length !== 6) {
+  const expectedCount = 2 + NUTRIENT_FIELDS.length;
+
+  if (parts.length !== expectedCount) {
     throw new Error(
-      `${sourceLabel}は card_id,name,grams,kcal,carbs,protein の6項目で指定してください。`
+      `${sourceLabel}は card_id,name,${NUTRIENT_FIELDS.map((field) => field.key).join(",")} の${expectedCount}項目で指定してください。`
     );
   }
 
-  const [idText, nameText, gramsText, caloriesText, carbsText, proteinText] =
-    parts.map((part) => part.trim());
-
-  const grams = Number(gramsText);
-  const calories = Number(caloriesText);
-  const carbs = Number(carbsText);
-  const protein = Number(proteinText);
+  const [idText, nameText, ...valueTexts] = parts.map((part) => part.trim());
 
   if (!idText) {
     throw new Error("カードIDは必須です。");
@@ -72,22 +155,23 @@ function parseCardParts(parts, sourceLabel = "データ") {
     throw new Error("カード名称は必須です。");
   }
 
-  if (
-    !Number.isFinite(grams) ||
-    !Number.isFinite(calories) ||
-    !Number.isFinite(carbs) ||
-    !Number.isFinite(protein)
-  ) {
-    throw new Error("グラム数、カロリー、炭水化物、タンパク質は数値で入力してください。");
+  const numericValues = {};
+
+  for (let index = 0; index < NUTRIENT_FIELDS.length; index += 1) {
+    const field = NUTRIENT_FIELDS[index];
+    const value = Number(valueTexts[index]);
+
+    if (!Number.isFinite(value)) {
+      throw new Error(`${field.label}は数値で入力してください。`);
+    }
+
+    numericValues[field.key] = value;
   }
 
   return {
     id: idText,
     name: nameText,
-    grams,
-    calories,
-    carbs,
-    protein,
+    ...numericValues,
   };
 }
 
@@ -162,27 +246,34 @@ function resetCards() {
   showMessage("読み取り済みカードをリセットしました。", "success");
 }
 
+function calculateTotals() {
+  const totals = Object.fromEntries(NUTRIENT_FIELDS.map((field) => [field.key, 0]));
+
+  for (const card of state.cards) {
+    for (const field of NUTRIENT_FIELDS) {
+      totals[field.key] += card[field.key];
+    }
+  }
+
+  return totals;
+}
+
 function render() {
   const count = state.cards.length;
-  const totals = state.cards.reduce(
-    (sum, card) => {
-      sum.calories += card.calories;
-      sum.carbs += card.carbs;
-      sum.protein += card.protein;
-      return sum;
-    },
-    { calories: 0, carbs: 0, protein: 0 }
-  );
+  const totals = calculateTotals();
 
   cardCount.textContent = String(count);
-  caloriesValue.textContent = formatNumber(totals.calories);
-  carbsValue.textContent = formatNumber(totals.carbs);
-  proteinValue.textContent = formatNumber(totals.protein);
+
+  for (const field of NUTRIENT_FIELDS) {
+    const target = document.querySelector(`#${field.key}Value`);
+    if (target) {
+      target.textContent = formatNumber(totals[field.key]);
+    }
+  }
 
   if (!count) {
     summaryHeading.textContent = "カードはまだありません";
-    tableBody.innerHTML =
-      '<tr class="empty-row"><td colspan="8">まだカードが追加されていません。</td></tr>';
+    tableBody.innerHTML = `<tr class="empty-row"><td colspan="${4 + NUTRIENT_FIELDS.length}">まだカードが追加されていません。</td></tr>`;
     exportButton.disabled = true;
     return;
   }
@@ -196,19 +287,20 @@ function render() {
   tableBody.replaceChildren(
     ...state.cards.map((card) => {
       const row = document.createElement("tr");
-      const cells = [
+      const values = [
         card.id,
         card.name,
-        `${formatNumber(card.grams)} g`,
-        `${formatNumber(card.calories)} kcal`,
-        `${formatNumber(card.carbs)} g`,
-        `${formatNumber(card.protein)} g`,
+        ...NUTRIENT_FIELDS.map(
+          (field) => `${formatNumber(card[field.key])} ${field.unit}`
+        ),
         card.readAt.toLocaleTimeString("ja-JP", {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
         }),
-      ].map((value) => {
+      ];
+
+      const cells = values.map((value) => {
         const cell = document.createElement("td");
         cell.textContent = value;
         return cell;
@@ -513,7 +605,6 @@ function parseAndAddCsv(csvText) {
 
 function isHeaderLine(line) {
   const parts = parseCsvLine(line).map((part) => part.trim().toLowerCase());
-
   return CSV_HEADER_COLUMNS.every((column, index) => parts[index] === column);
 }
 
@@ -563,14 +654,11 @@ function exportCsv() {
   const rows = state.cards.map((card) => [
     card.id,
     card.name,
-    String(card.grams),
-    String(card.calories),
-    String(card.carbs),
-    String(card.protein),
+    ...NUTRIENT_FIELDS.map((field) => String(card[field.key])),
     card.readAt.toISOString(),
   ]);
   const csv = [header, ...rows]
-    .map((row) => row.map(escapeCsvCell).join(","))
+    .map((row) => row.map((value) => escapeCsvCell(String(value))).join(","))
     .join("\n");
 
   const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
