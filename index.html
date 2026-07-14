@@ -22,7 +22,7 @@
         <div class="panel-heading">
           <div>
             <h2 id="scannerTitle">カード読み取り</h2>
-            <p>QR形式: <code>card001,rice,150,234,55.7,3.8</code></p>
+            <p>QR形式: <code>card001,rice,150,234,55.7,3.8,52,1200,230,45,1.2,310,35,5.5,0.4</code></p>
           </div>
           <button class="primary-button" id="toggleCameraButton" type="button">カメラ起動</button>
         </div>
@@ -44,7 +44,7 @@
               name="manualInput"
               type="text"
               inputmode="text"
-              placeholder="card001,rice,150,234,55.7,3.8"
+              placeholder="card001,rice,150,234,55.7,3.8,52,1200,230,45,1.2,310,35,5.5,0.4"
               autocomplete="off"
             >
             <button type="submit">追加</button>
@@ -78,19 +78,10 @@
             <span>枚数</span>
             <strong id="cardCount">0</strong>
           </div>
-          <div class="metric">
-            <span>カロリー (kcal)</span>
-            <strong id="caloriesValue">0</strong>
-          </div>
-          <div class="metric">
-            <span>炭水化物 (g)</span>
-            <strong id="carbsValue">0</strong>
-          </div>
-          <div class="metric">
-            <span>タンパク質 (g)</span>
-            <strong id="proteinValue">0</strong>
-          </div>
+          <div id="primaryMetrics" class="metrics-primary"></div>
         </div>
+
+        <div id="summarySections" class="summary-sections"></div>
 
         <div class="table-tools">
           <button class="secondary-button" id="exportButton" type="button">CSV書き出し</button>
@@ -98,21 +89,10 @@
 
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>カードID</th>
-                <th>名称</th>
-                <th>グラム数</th>
-                <th>カロリー</th>
-                <th>炭水化物</th>
-                <th>タンパク質</th>
-                <th>読取時刻</th>
-                <th></th>
-              </tr>
-            </thead>
+            <thead id="cardsTableHead"></thead>
             <tbody id="cardsTableBody">
               <tr class="empty-row">
-                <td colspan="8">まだカードが追加されていません。</td>
+                <td colspan="17">まだカードが追加されていません。</td>
               </tr>
             </tbody>
           </table>
