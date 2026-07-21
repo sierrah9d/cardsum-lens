@@ -3,7 +3,7 @@ const NUTRIENT_FIELDS = [
   { key: "calories", label: "カロリー", unit: "kcal", category: "basic", primary: true },
   { key: "carbs", label: "炭水化物", unit: "g", category: "basic", primary: true },
   { key: "protein", label: "タンパク質", unit: "g", category: "basic", primary: true },
-  { key: "fat", label: "脂質", unit: "kcal", category: "basic", primary: true },
+  { key: "fat", label: "脂質", unit: "g", category: "basic", primary: true },
   { key: "fiber", label: "食物繊維", unit: "mg", category: "minerals", primary: false },
   { key: "potassium", label: "カリウム", unit: "mg", category: "minerals", primary: false },
   { key: "calcium", label: "カルシウム", unit: "mg", category: "minerals", primary: false },
